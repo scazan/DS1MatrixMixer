@@ -59,7 +59,7 @@ DS1MatrixMixer {
 		MIDIClient.init;
 		MIDIIn.connectAll;
 		midiOut = MIDIOut.newByName("DS1-DS1 MIDI 1","DS1-DS1 MIDI 1");
-		// turn off all LEDs
+
 		// Turn off all LEDs
 		25.do({|i|
 			midiOut.noteOn(0,i,0);
