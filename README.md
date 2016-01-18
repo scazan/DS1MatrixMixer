@@ -62,6 +62,7 @@ m = DS1MatrixMixer.new([
 )
 ```
 
+### Outputs:
 All synth outputs are summed on channels [0,1]. Each individual synth output is also sent out to an individual SC output channel.
 
 The first synth is output individually on [2,3].<br>
@@ -69,7 +70,11 @@ The second synth is output individually on [4,5].<br>
 The third synth is output individually on [6,7].<br>
 And so on...
 
+### Buttons:
 The lower button in each channel mutes the channel (indicated by the button turning red).
 
 The upper button toggles EQ mode which turns the bottom 3 faders of the channel into a high, mid, low EQ (much like you'd find on something like the Mackie 1202). The top two knobs still function as before (EQ mode is indicated by the button turning white).
+
+The right-hand buttons and knobs are not currently in use in my setup.
+
 
