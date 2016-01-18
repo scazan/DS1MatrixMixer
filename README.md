@@ -1,5 +1,5 @@
 # DS1MatrixMixer
-A matrix mixer class for SC 3.7 using the Livid DS1 with a built-in EQ mode, mute, and master fader.
+An Ndef-oriented matrix mixer class for SC 3.7 using the Livid DS1 with a built-in EQ mode, mute, and master fader.
 
 
 ## Using the class:
