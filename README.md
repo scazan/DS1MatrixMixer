@@ -45,8 +45,7 @@ Some Ndefs can use the matrix inputs/sends:
 )
 ```
 
-Instantiate the matrix mixer using the names of the Ndefs that you want to use 
-(currently, you must fill the empty channels with an empty ndef name. In this case \nothing. I will fix this soon).
+Instantiate the matrix mixer using the names of the Ndefs that you want to use.
 ```
 (
 m = DS1MatrixMixer.new([
@@ -54,10 +53,7 @@ m = DS1MatrixMixer.new([
 	\trackingSynth,
 	\noiseSynth,
 	\sinSynth,
-	\soundIn0,
-	\nothing,
-	\nothing,
-	\nothing
+	\soundIn0
 ]);
 )
 ```
