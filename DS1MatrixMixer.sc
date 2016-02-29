@@ -6,7 +6,9 @@ Also contains a fader and EQ on each channel which is enabled by the upper butto
 */
 
 DS1MatrixMixer {
-	var instruments;
+	var instruments,
+		totalNumInstruments = 8, // DS1 has 8 sliders, one slider per instrument
+		midiOut;
 
 	*new {| instrumentsArray |
 		^super.new.init(instrumentsArray);
@@ -17,7 +19,6 @@ DS1MatrixMixer {
 		var controls,
 			muteStates,
 			eqStates,
-			midiOut,
 			colors = Dictionary[
 				\green -> 127,
 				\yellow -> 126,
@@ -31,9 +32,10 @@ DS1MatrixMixer {
 
 		instruments = instrumentArray;
 
-		controls = Array.fill(instruments.size,\amp);
-		muteStates = Array.fill(instruments.size,1);
-		eqStates = Array.fill(instruments.size,0);
+
+		controls = Array.fill(totalNumInstruments, \amp);
+		muteStates = Array.fill(totalNumInstruments, 1);
+		eqStates = Array.fill(totalNumInstruments, 0);
 
 		"Loading Matrix mixer...".postln;
 
@@ -41,7 +43,8 @@ DS1MatrixMixer {
 
 		// 8x8 Matrix routings as Ndefs
 		instruments.do({|item, i|
-			Ndef(("bus"++i).asSymbol, { | instr0Send=0, instr1Send=0, instr2Send=0, instr3Send=0, instr4Send=0, instr5Send=0, instr6Send=0, instr7Send=0 |
+			var busNameSymbol = ("bus"++i).asSymbol;
+			Ndef(busNameSymbol, { | instr0Send=0, instr1Send=0, instr2Send=0, instr3Send=0, instr4Send=0, instr5Send=0, instr6Send=0, instr7Send=0 |
 				var sig = (Ndef(instruments[0]).ar * instr0Send)
 				+ (Ndef(instruments[1]).ar * instr1Send)
 				+ (Ndef(instruments[2]).ar * instr2Send)
@@ -53,6 +56,10 @@ DS1MatrixMixer {
 
 				sig;
 			});
+
+			// Set the input of the synth to be the bus associated with its order so \in.ar can be used
+			Ndef(item) <<> Ndef(busNameSymbol);
+
 		});
 
 		// Setup MIDI responders
@@ -60,10 +67,7 @@ DS1MatrixMixer {
 		MIDIIn.connectAll;
 		midiOut = MIDIOut.newByName("DS1-DS1 MIDI 1","DS1-DS1 MIDI 1");
 
-		// Turn off all LEDs
-		25.do({|i|
-			midiOut.noteOn(0,i,0);
-		});
+		this.turnOffLEDs(midiOut);
 
 		MIDIdef.noteOff(\buttons, { |val, num |
 			var button = (( num ) % 2),
@@ -156,8 +160,33 @@ DS1MatrixMixer {
 
 	}
 
+	turnOffLEDs {
+		// Turn off all LEDs
+		{
+			0.5.wait;
+			25.do({|i|
+				midiOut.noteOn(0,i,0);
+				// throttle this to make sure it gets 'em all
+				0.01.wait;
+			});
+		}.fork;
+	}
 	// Helper function to create a fader for an Ndef that conforms to this interface
 	createFaders {
+		// If we didn't provide all the instruments, fill the rest of the slots with a single "nothing" synth
+		if(instruments.size < totalNumInstruments, {
+			var instrumentsList = List.newUsing(instruments);
+
+			var numMissingInstruments = totalNumInstruments - instrumentsList.size,
+				missingInstrumentOffset = instrumentsList.size - 1;
+
+			numMissingInstruments.do({
+				instrumentsList.add(\nothing);
+			});
+
+			instruments = instrumentsList.array;
+		});
+
 		instruments.do( {| name, i |
 			Ndef((name.asString++"Fader").asSymbol, { | amp=0, mute=1, low=0.5, mid=0.5, high=0.5 |
 				var out = Ndef(name.asSymbol).ar;
