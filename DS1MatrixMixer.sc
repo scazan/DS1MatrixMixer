@@ -32,7 +32,6 @@ DS1MatrixMixer {
 
 		instruments = instrumentArray;
 
-
 		controls = Array.fill(totalNumInstruments, \amp);
 		muteStates = Array.fill(totalNumInstruments, 1);
 		eqStates = Array.fill(totalNumInstruments, 0);
@@ -65,9 +64,13 @@ DS1MatrixMixer {
 		// Setup MIDI responders
 		MIDIClient.init;
 		MIDIIn.connectAll;
-		midiOut = MIDIOut.newByName("DS1-DS1 MIDI 1","DS1-DS1 MIDI 1");
 
-		this.turnOffLEDs(midiOut);
+		// Try to connect, ignore if there is failure
+		{
+			midiOut = MIDIOut.newByName("DS1-DS1 MIDI 1","DS1-DS1 MIDI 1");
+
+			this.turnOffLEDs(midiOut);
+		}.try({});
 
 		MIDIdef.noteOff(\buttons, { |val, num |
 			var button = (( num ) % 2),
@@ -157,7 +160,7 @@ DS1MatrixMixer {
 			});
 
 			"MatrixMixer ready...".postln;
-
+			^this;
 	}
 
 	turnOffLEDs {
@@ -206,5 +209,49 @@ DS1MatrixMixer {
 		instruments = instrumentArray;
 
 		this.createFaders();
+	}
+
+	// IN PROGRESS: Show a gui for the DS1 for visual feedback but more importantly for disconnected prototyping
+	// TODO: Connect it to MIDI
+	// TODO: Add normal control mode or separate that into another class
+	gui {
+		var window;
+		var hLayout; 
+		var channels;
+
+		window = Window.new("Livid DS1");
+		hLayout = HLayout();
+		channels = List.new();
+		// Create all channels
+		8.do({
+			var vLayout = VLayout();
+			var controls = List.fill(5, {Knob.new()});
+
+			controls.add(Button.new().states_( [["", Color.white, Color.black], ["", Color.black, Color.cyan]]));
+			controls.add(Button.new().states_( [["", Color.white, Color.black], ["", Color.black, Color.red]]));
+
+			controls.add(Slider.new());
+
+			controls.do({|item, i|
+				var stretch = 0.8;
+
+				if(i >= 5, {stretch = 3.0});
+
+				vLayout.add(item, stretch);
+			});
+
+			hLayout.add(vLayout);
+			// Add to the array of controls
+			channels.add(controls);
+		});
+
+		window.layout = hLayout;
+
+		window.background = Color.black;
+		window.front;
+		window.onClose = {};
+
+		// Returns the an array for each channel strip with all UI elements so that one can assign actions to them
+		^channels;
 	}
 }
