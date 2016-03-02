@@ -1,5 +1,5 @@
 # LividDS1
-An Ndef-oriented controller class for SC 3.7 using the Livid DS1 with a built-in EQ mode, mute, master fader, and matrix-mixer.
+An Ndef-oriented controller class for SuperCollider 3.7 using the Livid DS1 with a built-in EQ, channel mutes, master fader, GUI, and matrix-mixer mode.
 
 
 ### Using the class:
