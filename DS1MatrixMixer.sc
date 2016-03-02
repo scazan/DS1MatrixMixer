@@ -10,7 +10,8 @@ DS1MatrixMixer {
 		totalNumInstruments = 8, // DS1 has 8 sliders, one slider per instrument
 		midiOut,
 		guiActive = false,
-		midiDisconnected = false,
+		midiDisconnected = true,
+		matrixMode = false,
 		controllerValues;
 
 	*new {| instrumentsArray |
@@ -21,19 +22,9 @@ DS1MatrixMixer {
 	init {| instrumentArray |
 		var controls,
 			muteStates,
-			eqStates,
-			colors = Dictionary[
-				\green -> 127,
-				\yellow -> 126,
-				\blue -> 63,
-				\red -> 31,
-				\purple -> 15,
-				\cyan -> 7,
-				\white -> 3,
-				\off -> 0,
-			];
+			eqStates;
 
-		controllerValues = Array.fill(totalNumInstruments, Array.fill(8, 0) );
+		controllerValues = Array.fill(totalNumInstruments, {Array.fill(8, 0)} );
 
 		instruments = instrumentArray;
 
@@ -76,7 +67,7 @@ DS1MatrixMixer {
 
 			this.turnOffLEDs(midiOut);
 		}.try({
-			midiDisconnected = true;
+			"No DS1 found".postln;
 		});
 
 		MIDIdef.noteOff(\buttons, { |val, num |
@@ -93,15 +84,16 @@ DS1MatrixMixer {
 						if(muteState == 1, {
 							// Mute is ENABLED if muteState is 1 (we use this as a multiplier)
 							muteState = 0;
-							midiOut.noteOn(0,num, colors[\red]);
+							this.setLEDColor(num, \red);
 						}, {
 							// Mute is DISABLED if muteState is 1 (we use this as a multiplier)
 							muteState = 1;
-							midiOut.noteOn(0,num, colors[\off]);
+							this.setLEDColor(num, \off);
 						});
 
 						muteStates[column] = muteState;
 						Ndef((instruments[column]++"Fader").asSymbol).set(\mute, muteState);
+						controllerValues[column][6] = ( muteState-1 ).abs;
 					}, {
 						// If button is the upper channel button treat it as an EQ toggle
 						if(button == 0, {
@@ -109,10 +101,10 @@ DS1MatrixMixer {
 
 							if(eqStates[column] == 1, {
 								eqState = 0;
-								midiOut.noteOn(0,num, colors[\off]);
+								this.setLEDColor(num, \off);
 							}, {
 								eqState = 1;
-								midiOut.noteOn(0,num, colors[\white]);
+								this.setLEDColor(num, \white);
 							});
 
 							eqStates[column] = eqState;
@@ -121,6 +113,19 @@ DS1MatrixMixer {
 					});
 				});
 
+			}, {
+				switch(num,
+					19, {
+						// Toggle matrix mode
+						matrixMode = matrixMode.not();
+
+						if(matrixMode == true, {
+							this.setLEDColor(19, \white);
+						}, {
+							this.setLEDColor(19, \off);
+						});
+					}
+				);
 			});
 		});
 
@@ -134,36 +139,39 @@ DS1MatrixMixer {
 				Server.local.volume = scaledVal.ampdb;
 			}, {
 
-				// If the column number is greater than our columns, we are now in the volume sliders
-				if(column >= 8, {
-					column = num - 41;
+					// If the column number is greater than our columns, we are now in the volume sliders
+					if(column >= 8, {
+						column = num - 41;
 
-					Ndef((instruments[column]++"Fader").asSymbol).set(controls[column], scaledVal.squared );
-				}, {
+						Ndef((instruments[column]++"Fader").asSymbol).set(controls[column], scaledVal.squared );
+						controllerValues[column][7] = scaledVal;
+					}, {
 
-					// If we have the eq toggle then treat as EQ
-					if(knob >= 2 && eqStates[column] == 1, {
-						var fader = (instruments[column]++"Fader").asSymbol;
+						// If we have the eq toggle then treat as EQ
+						if(knob >= 2 && eqStates[column] == 1, {
+							var fader = (instruments[column]++"Fader").asSymbol;
 
-						switch(knob,
-							2, {
-								Ndef(fader).set(\high, scaledVal);
-							},
-							3, {
-								Ndef(fader).set(\mid, scaledVal);
-							},
-							4, {
-								Ndef(fader).set(\low, scaledVal);
+							switch(knob,
+								2, {
+									Ndef(fader).set(\high, scaledVal);
+								},
+								3, {
+									Ndef(fader).set(\mid, scaledVal);
+								},
+								4, {
+									Ndef(fader).set(\low, scaledVal);
+								});
+
+							}, {
+								// Otherwise use it as matrix routing
+								if(matrixMode == true, {
+									Ndef(("bus"++knob).asSymbol).set(("instr"++column++"Send").asSymbol, scaledVal);
+								}, {
+									controllerValues[column][knob] = scaledVal;
+								});
 							});
-
-						}, {
-							// Otherwise use it as matrix routing
-							Ndef(("bus"++knob).asSymbol).set(("instr"++column++"Send").asSymbol, scaledVal);
-							controllerValues[column][knob] = scaledVal;
 						});
-					});
 
-					//[instruments[column], knob, val].postln;
 
 				});
 			});
@@ -172,12 +180,27 @@ DS1MatrixMixer {
 			^this;
 	}
 
+	setLEDColor { | num, color |
+		var colors = Dictionary[
+			\green -> 127,
+			\yellow -> 126,
+			\blue -> 63,
+			\red -> 31,
+			\purple -> 15,
+			\cyan -> 7,
+			\white -> 3,
+			\off -> 0,
+		];
+
+		midiOut.noteOn(0,num, colors[color]);
+	}
+
 	turnOffLEDs {
 		// Turn off all LEDs
 		{
 			0.5.wait;
 			25.do({|i|
-				midiOut.noteOn(0,i,0);
+				this.setLEDColor(i, \off);
 				// throttle this to make sure it gets 'em all
 				0.01.wait;
 			});
@@ -225,8 +248,12 @@ DS1MatrixMixer {
 	// TODO: Add normal control mode or separate that into another class
 	gui {
 		var window;
-		var hLayout; 
+		var hLayout,
+			syncButton;
+
+		var vLayoutControls;
 		var channels;
+		var refreshRoutine;
 
 		window = Window.new("Livid DS1");
 		hLayout = HLayout();
@@ -254,17 +281,23 @@ DS1MatrixMixer {
 			channels.add(controls);
 		});
 
+		// Add some GUI specific controls
+		vLayoutControls = VLayout();
+		syncButton = Button().states_( [["midi", Color.white, Color.black], ["midi", Color.black, Color.white]]);
+		syncButton.action = { | button |
+			if(button.value == 1, {midiDisconnected = false;}, {midiDisconnected = true; });
+		};
+
+		vLayoutControls.add(syncButton);
+		hLayout.add(vLayoutControls);
 		window.layout = hLayout;
 
 		window.background = Color.black;
 		window.front;
-		window.onClose = { guiActive = false; };
 
 		// If we have MIDI connected animate the window to reflect the values given by the MIDI controller as defined by what has been written into this.controllerValues
-		if(midiDisconnected == true, {
-			var refreshRoutine;
-
-			window.drawFunc = {
+		window.drawFunc = {
+			if(midiDisconnected == false && matrixMode == false, {
 				channels.do({ |channelControls, i|
 					channelControls.do({ | guiElem, k |
 						var currentValue = controllerValues[i][k];
@@ -272,12 +305,19 @@ DS1MatrixMixer {
 						guiElem.value = currentValue;
 					});
 				});
-			};
+			});
+		};
 
-			refreshRoutine = { while { window.isClosed.not } { window.refresh; 0.04.wait; } }.fork(AppClock);
+			refreshRoutine = { while({ window.isClosed.not }, {
+				if(midiDisconnected == false && matrixMode == false, {
+					window.refresh;
+				});
+				0.04.wait;
+			});
+			}.fork(AppClock);
 			window.onClose = { refreshRoutine.stop; guiActive = false; };
 
-		});
+		//});
 
 		// Returns the an array for each channel strip with all UI elements so that one can assign actions to them
 		^channels;
