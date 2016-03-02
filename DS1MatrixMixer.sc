@@ -6,9 +6,12 @@ Also contains a fader and EQ on each channel which is enabled by the upper butto
 */
 
 DS1MatrixMixer {
-	var instruments,
+	classvar instruments,
 		totalNumInstruments = 8, // DS1 has 8 sliders, one slider per instrument
-		midiOut;
+		midiOut,
+		guiActive = false,
+		midiDisconnected = false,
+		controllerValues;
 
 	*new {| instrumentsArray |
 		^super.new.init(instrumentsArray);
@@ -29,6 +32,8 @@ DS1MatrixMixer {
 				\white -> 3,
 				\off -> 0,
 			];
+
+		controllerValues = Array.fill(totalNumInstruments, Array.fill(8, 0) );
 
 		instruments = instrumentArray;
 
@@ -70,7 +75,9 @@ DS1MatrixMixer {
 			midiOut = MIDIOut.newByName("DS1-DS1 MIDI 1","DS1-DS1 MIDI 1");
 
 			this.turnOffLEDs(midiOut);
-		}.try({});
+		}.try({
+			midiDisconnected = true;
+		});
 
 		MIDIdef.noteOff(\buttons, { |val, num |
 			var button = (( num ) % 2),
@@ -119,18 +126,19 @@ DS1MatrixMixer {
 
 		MIDIdef.cc(\knobsAndSliders, { |val, num |
 			var knob = (( num -1 ) % 5),
-			column = (( num - 1 ) / 5).asInt;
+				column = (( num - 1 ) / 5).asInt,
+				scaledVal = val/127;
 
 			if(num == 49, {
 				//set master volume
-				Server.local.volume = (val/127).ampdb;
+				Server.local.volume = scaledVal.ampdb;
 			}, {
 
-				// If the column number is great than our columns, we are now in the volume sliders
+				// If the column number is greater than our columns, we are now in the volume sliders
 				if(column >= 8, {
 					column = num - 41;
 
-					Ndef((instruments[column]++"Fader").asSymbol).set(controls[column], (val/127).squared );
+					Ndef((instruments[column]++"Fader").asSymbol).set(controls[column], scaledVal.squared );
 				}, {
 
 					// If we have the eq toggle then treat as EQ
@@ -139,18 +147,19 @@ DS1MatrixMixer {
 
 						switch(knob,
 							2, {
-								Ndef(fader).set(\high, val/127);
+								Ndef(fader).set(\high, scaledVal);
 							},
 							3, {
-								Ndef(fader).set(\mid, val/127);
+								Ndef(fader).set(\mid, scaledVal);
 							},
 							4, {
-								Ndef(fader).set(\low, val/127);
+								Ndef(fader).set(\low, scaledVal);
 							});
 
 						}, {
 							// Otherwise use it as matrix routing
-							Ndef(("bus"++knob).asSymbol).set(("instr"++column++"Send").asSymbol, val/127);
+							Ndef(("bus"++knob).asSymbol).set(("instr"++column++"Send").asSymbol, scaledVal);
+							controllerValues[column][knob] = scaledVal;
 						});
 					});
 
@@ -249,7 +258,26 @@ DS1MatrixMixer {
 
 		window.background = Color.black;
 		window.front;
-		window.onClose = {};
+		window.onClose = { guiActive = false; };
+
+		// If we have MIDI connected animate the window to reflect the values given by the MIDI controller as defined by what has been written into this.controllerValues
+		if(midiDisconnected == true, {
+			var refreshRoutine;
+
+			window.drawFunc = {
+				channels.do({ |channelControls, i|
+					channelControls.do({ | guiElem, k |
+						var currentValue = controllerValues[i][k];
+
+						guiElem.value = currentValue;
+					});
+				});
+			};
+
+			refreshRoutine = { while { window.isClosed.not } { window.refresh; 0.04.wait; } }.fork(AppClock);
+			window.onClose = { refreshRoutine.stop; guiActive = false; };
+
+		});
 
 		// Returns the an array for each channel strip with all UI elements so that one can assign actions to them
 		^channels;
