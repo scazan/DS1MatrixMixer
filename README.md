@@ -1,5 +1,5 @@
-# DS1MatrixMixer
-An Ndef-oriented matrix mixer class for SC 3.7 using the Livid DS1 with a built-in EQ mode, mute, and master fader.
+# LividDS1
+An Ndef-oriented controller class for SC 3.7 using the Livid DS1 with a built-in EQ mode, mute, master fader, and matrix-mixer.
 
 
 ### Using the class:
@@ -48,7 +48,7 @@ Some Ndefs can use the matrix inputs/sends:
 Instantiate the matrix mixer using the names of the Ndefs that you want to use.
 ```
 (
-m = DS1MatrixMixer.new([
+m = LividDS1.new([
 	\reverb,
 	\trackingSynth,
 	\noiseSynth,

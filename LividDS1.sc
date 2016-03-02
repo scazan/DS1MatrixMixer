@@ -1,11 +1,11 @@
 /*
-An Ndef-oriented Matrix Mixer for the Livid DS1.
+An Ndef-oriented Controller Mapping with built-in Matrix Mixer for the Livid DS1.
 
 Also contains a fader and EQ on each channel which is enabled by the upper button on each channel.
 
 */
 
-DS1MatrixMixer {
+LividDS1 {
 	classvar instruments,
 		totalNumInstruments = 8, // DS1 has 8 sliders, one slider per instrument
 		midiOut,
@@ -32,7 +32,7 @@ DS1MatrixMixer {
 		muteStates = Array.fill(totalNumInstruments, 1);
 		eqStates = Array.fill(totalNumInstruments, 0);
 
-		"Loading Matrix mixer...".postln;
+		"Loading DS1 with Matrix mixer...".postln;
 
 		this.createFaders();
 
@@ -176,7 +176,7 @@ DS1MatrixMixer {
 				});
 			});
 
-			"MatrixMixer ready...".postln;
+			"LividDS1 ready...".postln;
 			^this;
 	}
 
