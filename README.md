@@ -45,7 +45,12 @@ Some Ndefs can use the matrix inputs/sends:
 )
 ```
 
-Instantiate the matrix mixer using the names of the Ndefs that you want to use.
+Instatiate the controller.
+```
+m = LiviDS1.new();
+```
+
+Or instantiate the controller using the names of the Ndefs that you want to use.
 ```
 (
 m = LividDS1.new([
@@ -56,6 +61,17 @@ m = LividDS1.new([
 	\soundIn0
 ]);
 )
+```
+
+If you want to change the instruments mapped into it you can use the update function.
+```
+m.update([
+	\reverb,
+	\someOtherSynth,
+	\noiseSynth,
+	\sinSynth,
+	\maybeAnotherOne
+]);
 ```
 
 ### Outputs:
