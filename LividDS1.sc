@@ -12,7 +12,8 @@ LividDS1 {
 		guiActive = false,
 		midiDisconnected = true,
 		matrixMode = false,
-		controllerValues;
+		controllerValues,
+		channelWidgets;
 
 	*new {| instrumentsArray |
 		^super.new.init(instrumentsArray);
@@ -65,7 +66,7 @@ LividDS1 {
 		{
 			midiOut = MIDIOut.newByName("DS1-DS1 MIDI 1","DS1-DS1 MIDI 1");
 
-			this.turnOffLEDs(midiOut);
+			this.turnOffLEDs();
 		}.try({
 			"No DS1 found".postln;
 		});
@@ -116,13 +117,16 @@ LividDS1 {
 			}, {
 				switch(num,
 					19, {
-						// Toggle matrix mode
-						matrixMode = matrixMode.not();
+						if(val == 0, {
+							// Toggle matrix mode
+							matrixMode = matrixMode.not();
 
-						if(matrixMode == true, {
-							this.setLEDColor(19, \white);
-						}, {
-							this.setLEDColor(19, \off);
+							matrixMode.postln;
+							if(matrixMode == true, {
+								this.setLEDColor(19, \white);
+							}, {
+								this.setLEDColor(19, \off);
+							});
 						});
 					}
 				);
@@ -198,11 +202,10 @@ LividDS1 {
 	turnOffLEDs {
 		// Turn off all LEDs
 		{
-			0.5.wait;
 			25.do({|i|
 				this.setLEDColor(i, \off);
 				// throttle this to make sure it gets 'em all
-				0.01.wait;
+				0.1.wait;
 			});
 		}.fork;
 	}
@@ -320,6 +323,17 @@ LividDS1 {
 		//});
 
 		// Returns the an array for each channel strip with all UI elements so that one can assign actions to them
-		^channels;
+		channelWidgets = channels;
+
+		^channelWidgets;
+	}
+
+	// Return the array of controller values for mapping purposes
+	values {
+		^controllerValues;
+	}
+
+	map { | chanNum, ndefName |
+		
 	}
 }
