@@ -54,7 +54,7 @@ LividDS1 {
 			});
 
 			// Set the input of the synth to be the bus associated with its order so \in.ar can be used
-			Ndef(item) <<> Ndef(busNameSymbol);
+			// Ndef(item) <<> Ndef(busNameSymbol);
 
 		});
 
